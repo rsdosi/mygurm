@@ -108,7 +108,7 @@ export type Faq = {
 export const faqs: Faq[] = [
   {
     q: "What exactly is mygurm?",
-    a: "mygurm is an activity hub built for long-distance couples. Instead of scrolling for date ideas, you open the hub, pick something, and do it together in a shared room — no matter how many miles or timezones are between you.",
+    a: "Wow baby, you're actually looking around the site! AWWWWWW ur so cute! Well, mygurm is my... gurm... self explanatory no? she's all mine. this site is for us to do fun things, even when we are going to be in person, I want us to build this as a continuing memento of our relationship and it will serve as a really cool place to look back at a lot of memories! I can't wait!",
   },
   {
     q: "What's with the pink and blue?",

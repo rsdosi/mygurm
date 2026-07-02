@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f8f9fb;
+  --ink: #14161c;
+  --muted: #6b7280;
+  --you: #ff5c8a;
+  --me: #3b7dff;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--you) 26%, transparent);
+    color: var(--ink);
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight text-ink;
+  }
+
+  /* Keyboard focus affordance across interactive elements */
+  a:focus-visible,
+  button:focus-visible {
+    @apply outline-none ring-2 ring-me/60 ring-offset-2 ring-offset-bg;
+    border-radius: 12px;
+  }
+}
+
+@layer utilities {
+  /* Duotone text: "you" pink → "me" blue */
+  .text-duo {
+    background-image: linear-gradient(
+      100deg,
+      var(--you) 0%,
+      var(--me) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Soft ambient blobs behind hero content */
+  .blob {
+    @apply pointer-events-none absolute rounded-full blur-3xl;
+  }
+
+  .bg-grid {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(20, 22, 28, 0.06) 1px,
+      transparent 0
+    );
+    background-size: 28px 28px;
+  }
+}

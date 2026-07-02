@@ -4,9 +4,9 @@ const groups = [
   {
     title: "Product",
     links: [
+      { href: "/timeline", label: "Our story" },
       { href: "/photobooths", label: "Photobooths" },
       { href: "/gallery", label: "Gallery" },
-      { href: "/activities", label: "Activities" },
       { href: "/how-it-works", label: "How it works" },
       { href: "/faq", label: "FAQ" },
     ],

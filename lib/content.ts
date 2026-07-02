@@ -2,6 +2,12 @@ export type Tone = "you" | "me";
 
 /** Sweet-nothing pet names for the login greeting slot machine. */
 export const treats: string[] = [
+  "edamame",
+  "celery",
+  "broccoli",
+  "cheese ball",
+  "strawberry shake",
+  "protein shake",
   "strawberry",
   "blueberry",
   "raspberry",

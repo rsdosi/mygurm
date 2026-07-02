@@ -4,6 +4,9 @@ import { CODE_LENGTH, type Role } from "./room-protocol";
 
 export type ShotPair = { you: string | null; me: string | null };
 
+/** The couple, stamped into every strip. */
+export const COUPLE_INITIALS = "G + R";
+
 const COLORS = {
   bg: "#F8F9FB",
   ink: "#14161C",
@@ -12,6 +15,10 @@ const COLORS = {
   youSoft: "#FFE6EF",
   me: "#3B7DFF",
   meSoft: "#E4EDFF",
+  petalPink: "#FFC2D4",
+  petalBlue: "#BFD3FF",
+  bloom: "#FFD36E",
+  leaf: "#8FD6A6",
 };
 
 function displayFont(px: number, weight = 600): string {
@@ -95,13 +102,101 @@ function drawDot(
   ctx.fill();
 }
 
+/** A heart centered on (x, y). `s` ≈ its width. */
+function drawHeart(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  s: number,
+  color: string
+) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.35);
+  ctx.bezierCurveTo(x, y + s * 0.15, x - s * 0.5, y + s * 0.12, x - s * 0.5, y - s * 0.08);
+  ctx.bezierCurveTo(x - s * 0.5, y - s * 0.38, x, y - s * 0.42, x, y - s * 0.18);
+  ctx.bezierCurveTo(x, y - s * 0.42, x + s * 0.5, y - s * 0.38, x + s * 0.5, y - s * 0.08);
+  ctx.bezierCurveTo(x + s * 0.5, y + s * 0.12, x, y + s * 0.15, x, y + s * 0.35);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/** A little 5-petal flower centered on (x, y). `r` = petal orbit radius. */
+function drawFlower(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  petal: string
+) {
+  ctx.save();
+  ctx.fillStyle = petal;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.66, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = COLORS.bloom;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Scatter a flowery, heart-filled border around the whole card. */
+function drawFloralFrame(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number
+) {
+  const m = 44; // motif orbit inset from the canvas edge
+  const step = 92;
+  let i = 0;
+
+  const motif = (x: number, y: number, idx: number) => {
+    const k = idx % 4;
+    if (k === 0) drawHeart(ctx, x, y, 30, COLORS.you);
+    else if (k === 1) drawFlower(ctx, x, y, 13, COLORS.petalBlue);
+    else if (k === 2) drawHeart(ctx, x, y, 26, COLORS.me);
+    else drawFlower(ctx, x, y, 13, COLORS.petalPink);
+  };
+
+  // Top & bottom edges.
+  for (let x = m + step; x < W - m - step * 0.5; x += step) {
+    motif(x, m, i++);
+    motif(x, H - m, i++);
+  }
+  // Left & right edges.
+  for (let y = m + step; y < H - m - step * 0.5; y += step) {
+    motif(m, y, i++);
+    motif(W - m, y, i++);
+  }
+
+  // Corner flower clusters.
+  const corners: [number, number][] = [
+    [m, m],
+    [W - m, m],
+    [m, H - m],
+    [W - m, H - m],
+  ];
+  for (const [cx, cy] of corners) {
+    drawFlower(ctx, cx, cy, 17, COLORS.petalPink);
+    drawHeart(ctx, cx + 22, cy + 22, 20, COLORS.me);
+  }
+}
+
 /**
- * Composite the four captured pairs into one vertical duotone strip.
+ * Composite the four captured pairs into one vertical duotone strip, wrapped in
+ * a flowery heart frame and stamped with the date + the couple's initials.
  * you → pink (left), me → blue (right). Returns a full-resolution PNG data URL.
  */
 export async function buildStrip(
   code: string,
-  shots: ShotPair[]
+  shots: ShotPair[],
+  date: Date = new Date()
 ): Promise<string> {
   // Ensure branded fonts are ready before we paint text.
   if (typeof document !== "undefined" && document.fonts?.ready) {
@@ -113,16 +208,15 @@ export async function buildStrip(
   }
 
   const W = 1200;
-  const pad = 56;
+  const pad = 74;
   const gap = 24;
   const headerH = 150;
-  const footerH = 110;
+  const footerH = 210;
   const innerW = W - pad * 2;
   const cellW = (innerW - gap) / 2;
   const cellH = cellW; // square cells → tall strip
   const rows = 4;
-  const H =
-    pad + headerH + rows * cellH + (rows - 1) * gap + footerH + pad;
+  const H = pad + headerH + rows * cellH + (rows - 1) * gap + footerH + pad;
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -133,26 +227,28 @@ export async function buildStrip(
   // Card background.
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, W, H);
-  roundRect(ctx, 16, 16, W - 32, H - 32, 40);
+  roundRect(ctx, 16, 16, W - 32, H - 32, 44);
   ctx.fillStyle = "#ffffff";
   ctx.fill();
+
+  // Flowery, hearts-all-over frame.
+  drawFloralFrame(ctx, W, H);
 
   // Header: ● you + ● me
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const headerY = pad + headerH / 2 - 12;
+  const headerY = pad + headerH / 2 - 6;
   ctx.font = displayFont(52, 600);
   const label = "you  +  me";
   const metrics = ctx.measureText(label);
-  const startX = W / 2 - metrics.width / 2;
-  drawDot(ctx, startX - 26, headerY, 11, COLORS.you);
+  drawDot(ctx, W / 2 - metrics.width / 2 - 26, headerY, 11, COLORS.you);
   ctx.fillStyle = COLORS.ink;
   ctx.fillText(label, W / 2, headerY);
   drawDot(ctx, W / 2 + metrics.width / 2 + 26, headerY, 11, COLORS.me);
 
   ctx.font = uiFont(24, 600);
   ctx.fillStyle = COLORS.muted;
-  ctx.fillText(`room ${code}`, W / 2, pad + headerH - 18);
+  ctx.fillText(`room ${code}`, W / 2, pad + headerH - 14);
 
   // Shot rows.
   const preloaded = await Promise.all(
@@ -174,9 +270,7 @@ export async function buildStrip(
     roundRect(ctx, x, y, cellW, cellH, 22);
     ctx.clip();
     if (img) {
-      // "you" preview is mirrored on screen; keep the strip un-mirrored.
       drawCover(ctx, img, x, y, cellW, cellH);
-      // Subtle duotone wash.
       ctx.fillStyle = tint;
       ctx.globalAlpha = 0.14;
       ctx.fillRect(x, y, cellW, cellH);
@@ -189,7 +283,6 @@ export async function buildStrip(
       ctx.fillText("no camera", x + cellW / 2, y + cellH / 2);
     }
     ctx.restore();
-    // Frame.
     ctx.save();
     roundRect(ctx, x + 1.5, y + 1.5, cellW - 3, cellH - 3, 22);
     ctx.strokeStyle = tint;
@@ -204,18 +297,41 @@ export async function buildStrip(
     drawCell(preloaded[i]?.me ?? null, pad + cellW + gap, y, "me");
   }
 
-  // Footer branding.
-  const footerY = H - pad - footerH / 2 + 8;
-  ctx.font = displayFont(40, 600);
+  // ---- Footer: branding + date stamp + G + R heart ----
+  const yF = H - pad - footerH;
+
+  ctx.textAlign = "center";
+  ctx.font = displayFont(44, 600);
   ctx.fillStyle = COLORS.ink;
-  ctx.fillText("mygurm", W / 2, footerY - 6);
-  ctx.font = uiFont(22, 500);
+  ctx.fillText("mygurm", W / 2, yF + 62);
+  ctx.font = uiFont(24, 500);
   ctx.fillStyle = COLORS.muted;
   ctx.fillText(
     `four cuts · ${code.padEnd(CODE_LENGTH, " ").trim()}`,
     W / 2,
-    footerY + 30
+    yF + 108
   );
+
+  // Date stamp (bottom-right).
+  const dateStr = date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  const rightX = W - pad;
+  ctx.textAlign = "right";
+  ctx.font = uiFont(26, 600);
+  ctx.fillStyle = COLORS.ink;
+  ctx.fillText(dateStr, rightX, yF + 58);
+
+  // G + R inside a heart, just below the date.
+  const heartX = rightX - 52;
+  const heartY = yF + 150;
+  drawHeart(ctx, heartX, heartY, 122, COLORS.you);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = displayFont(40, 600);
+  ctx.fillText(COUPLE_INITIALS, heartX, heartY - 6);
 
   return canvas.toDataURL("image/png");
 }

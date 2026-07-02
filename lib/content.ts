@@ -1,5 +1,49 @@
 export type Tone = "you" | "me";
 
+/** Sweet-nothing pet names for the login greeting slot machine. */
+export const treats: string[] = [
+  "strawberry",
+  "blueberry",
+  "raspberry",
+  "blackberry",
+  "cherry pie",
+  "honey bun",
+  "apricot tart",
+  "sugar plum",
+  "walnut",
+  "peach tea",
+  "apple pie",
+  "cupcake",
+  "macaron",
+  "marshmallow",
+  "honeydew",
+  "clementine",
+  "cinnamon roll",
+  "brown sugar",
+  "peach cobbler",
+  "tangerine",
+  "mochi",
+  "egg tart",
+  "boba",
+  "matcha latte",
+  "caramel",
+  "honeycomb",
+  "lychee",
+  "persimmon",
+  "shortcake",
+  "gumdrop",
+  "pavlova",
+  "tiramisu",
+  "cotton candy",
+  "sugar cookie",
+  "butterscotch",
+  "peach",
+  "plum",
+  "honeypie",
+  "jellybean",
+  "dumpling",
+];
+
 export type Activity = {
   slug: string;
   emoji: string;

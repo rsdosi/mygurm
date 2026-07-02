@@ -5,7 +5,8 @@ import { useState } from "react";
 import Button from "./Button";
 
 const links = [
-  { href: "/activities", label: "Activities" },
+  { href: "/photobooths", label: "Photobooths" },
+  { href: "/gallery", label: "Gallery" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/faq", label: "FAQ" },
 ];

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SHOTS, type Role, type ServerMessage } from "./room-protocol";
 import { buildStrip, type ShotPair } from "./strip";
+import { newId, saveStrip } from "./gallery";
 import type { RoomHandle } from "./useRoom";
 import type { DuoVideo } from "./useDuoVideo";
 
@@ -110,9 +111,27 @@ export function usePhotobooth(
       stopClip();
       // Small grace period so the final still can arrive.
       const timer = setTimeout(async () => {
-        const url = await buildStrip(state.code, shotsRef.current);
+        const createdAt = Date.now();
+        const url = await buildStrip(
+          state.code,
+          shotsRef.current,
+          new Date(createdAt)
+        );
         setStripUrl(url);
         setBuilding(false);
+        // Auto-save this keepsake to the on-device gallery.
+        if (url) {
+          try {
+            await saveStrip({
+              id: newId(),
+              code: state.code,
+              dataUrl: url,
+              createdAt,
+            });
+          } catch {
+            /* gallery is best-effort */
+          }
+        }
       }, 400);
       return () => clearTimeout(timer);
     }

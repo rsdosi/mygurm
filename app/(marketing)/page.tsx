@@ -4,13 +4,18 @@ import Card from "@/components/Card";
 import Section from "@/components/Section";
 import RoomEntry from "@/components/RoomEntry";
 import PhotoStripMockup from "@/components/PhotoStripMockup";
+import HeroGreeting from "@/components/HeroGreeting";
 import { steps } from "@/lib/content";
 
 export default function Home() {
   return (
     <>
+      {/* Big login greeting */}
+      <HeroGreeting />
+
       {/* Hero — the entry */}
       <Section
+        id="start"
         className="relative overflow-hidden pt-14 sm:pt-16"
         innerClassName="relative"
       >

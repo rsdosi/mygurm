@@ -1,6 +1,5 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
 import {
   addUpload,
   deleteItem,
@@ -43,6 +42,47 @@ export type StripEntry = {
 const VIDEO_RE = /\.(mp4|webm|mov|m4v|ogg|ogv)$/i;
 const isVideoFile = (name: string, mime?: string) =>
   Boolean(mime?.startsWith("video")) || VIDEO_RE.test(name);
+
+// Vercel serverless request bodies cap at ~4.5MB; keep a margin.
+const MAX_UPLOAD_BYTES = 4.3 * 1024 * 1024;
+
+/** Downscale big images client-side so they fit the upload limit. */
+async function prepareImage(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size < 1.4 * 1024 * 1024) {
+    return file;
+  }
+  try {
+    const bmp = await createImageBitmap(file);
+    const max = 1800;
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob(res, "image/jpeg", 0.85)
+    );
+    if (blob && blob.size < file.size) {
+      const name = file.name.replace(/\.\w+$/, "") + ".jpg";
+      return new File([blob], name, { type: "image/jpeg" });
+    }
+  } catch {
+    /* fall back to original */
+  }
+  return file;
+}
+
+async function postUpload(fd: FormData): Promise<void> {
+  const res = await fetch("/api/uploads", { method: "POST", body: fd });
+  if (!res.ok) {
+    const msg = await res.json().catch(() => ({}));
+    throw new Error(msg.error || `upload failed (${res.status})`);
+  }
+}
 
 let modePromise: Promise<StoreMode> | null = null;
 
@@ -110,13 +150,21 @@ export async function addPhotos(
   if (media.length === 0) return;
   const mode = await resolveMode();
   if (mode === "remote") {
-    for (const file of media) {
-      const safe = file.name.replace(/[^\w.\-]+/g, "_") || "photo";
-      await upload(`pictures/${role}/${eventId || "untagged"}/${safe}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/uploads",
-        contentType: file.type || undefined,
-      });
+    for (const raw of media) {
+      const file = await prepareImage(raw);
+      if (file.size > MAX_UPLOAD_BYTES) {
+        throw new Error(
+          `"${raw.name}" is too large to share (max ~4MB${
+            raw.type.startsWith("video") ? " for videos" : ""
+          }).`
+        );
+      }
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("kind", "photo");
+      fd.append("role", role);
+      if (eventId) fd.append("eventId", eventId);
+      await postUpload(fd);
     }
   } else {
     for (const file of media) await addUpload(file, role, eventId ?? undefined);
@@ -188,11 +236,11 @@ export async function addStrip(dataUrl: string, code: string): Promise<void> {
   if (mode === "remote") {
     const blob = await (await fetch(dataUrl)).blob();
     const file = new File([blob], `${Date.now()}.png`, { type: "image/png" });
-    await upload(`strips/${code}/${file.name}`, file, {
-      access: "public",
-      handleUploadUrl: "/api/uploads",
-      contentType: "image/png",
-    });
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", "strip");
+    fd.append("code", code);
+    await postUpload(fd);
   } else {
     await saveStrip({ id: newId(), code, dataUrl, createdAt: Date.now() });
   }

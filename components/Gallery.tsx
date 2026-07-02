@@ -241,6 +241,7 @@ function UploadsGallery() {
   const [role, setRole] = useState<Role>("you");
   const [eventId, setEventId] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [box, setBox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -287,7 +288,12 @@ function UploadsGallery() {
   async function handleFiles(files: File[]) {
     if (files.length === 0) return;
     setBusy(true);
-    await addPhotos(files, role, eventId || null).catch(() => {});
+    setError(null);
+    try {
+      await addPhotos(files, role, eventId || null);
+    } catch (e) {
+      setError((e as Error).message || "Couldn't upload. Please try again.");
+    }
     if (fileRef.current) fileRef.current.value = "";
     await load();
     setBusy(false);
@@ -417,6 +423,11 @@ function UploadsGallery() {
             ? `${photos.length} shared — visible to both of you 💗`
             : `${photos.length} saved on this device`}
       </p>
+      {error && (
+        <p className="mt-2 rounded-card bg-you-soft px-4 py-2 text-sm text-you-ink">
+          {error}
+        </p>
+      )}
 
       {/* Grid */}
       {photos && photos.length > 0 && (

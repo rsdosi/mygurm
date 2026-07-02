@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { list, del } from "@vercel/blob";
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { list, del, put } from "@vercel/blob";
 
 /**
  * Shared "Pictures of us" store, backed by Vercel Blob. The uploader's role is
@@ -71,29 +70,52 @@ export async function GET(request: Request) {
   return NextResponse.json({ configured: true, items });
 }
 
+// Direct server-side upload (multipart form). Works fully behind the password
+// gate — no client token exchange or completion webhook to be redirected.
 export async function POST(request: Request) {
   if (!configured()) {
     return NextResponse.json({ error: "not-configured" }, { status: 501 });
   }
-  const body = (await request.json()) as HandleUploadBody;
+
+  let form: FormData;
   try {
-    const json = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: ["image/*", "video/*"],
-        addRandomSuffix: true,
-        maximumSizeInBytes: 200 * 1024 * 1024,
-      }),
-      // Metadata lives in the pathname, so nothing to persist on completion.
-      onUploadCompleted: async () => {},
+    form = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "bad-form" }, { status: 400 });
+  }
+
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "no-file" }, { status: 400 });
+  }
+
+  const safeName =
+    (file.name || "upload").replace(/[^\w.\-]+/g, "_").slice(-60) || "upload";
+  const kind = form.get("kind") === "strip" ? "strip" : "photo";
+
+  let pathname: string;
+  if (kind === "strip") {
+    const code =
+      String(form.get("code") || "strip")
+        .replace(/[^A-Za-z0-9]/g, "")
+        .slice(0, 8) || "strip";
+    pathname = `strips/${code}/${safeName}`;
+  } else {
+    const role = form.get("role") === "me" ? "me" : "you";
+    const eventId =
+      String(form.get("eventId") || "").replace(/[^\w-]/g, "") || "untagged";
+    pathname = `pictures/${role}/${eventId}/${safeName}`;
+  }
+
+  try {
+    const blob = await put(pathname, file, {
+      access: "public",
+      addRandomSuffix: true,
+      contentType: file.type || undefined,
     });
-    return NextResponse.json(json);
+    return NextResponse.json({ ok: true, url: blob.url });
   } catch (err) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 

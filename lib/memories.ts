@@ -149,6 +149,9 @@ export const seedEvents: TimelineEvent[] = seed.map((s) => ({
   custom: false,
 }));
 
+/** The Chipotle-run count from our canonical story (stays 5, doesn't drift). */
+export const chipotleCount = seedEvents.filter((e) => e.chipotle).length;
+
 /** Merge seed + custom events, chronologically. */
 export function mergeEvents(custom: TimelineEvent[]): TimelineEvent[] {
   return [...seedEvents, ...custom].sort((a, b) => a.md - b.md);

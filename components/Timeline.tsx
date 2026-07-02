@@ -5,7 +5,7 @@ import ChipotleCounter from "./ChipotleCounter";
 import AddMemory from "./AddMemory";
 import Lightbox, { type LightboxItem } from "./Lightbox";
 import { addEvent, listEvents, listPhotos, type PhotoEntry } from "@/lib/store";
-import type { TimelineEvent } from "@/lib/memories";
+import { chipotleCount, type TimelineEvent } from "@/lib/memories";
 
 function formatWhen(ts: number): string {
   return new Date(ts).toLocaleDateString("en-US", {
@@ -179,11 +179,6 @@ export default function Timeline() {
     }
     return map;
   }, [photos]);
-
-  const chipotleCount = useMemo(
-    () => (events ?? []).filter((e) => e.chipotle).length,
-    [events]
-  );
 
   useEffect(() => {
     if (!events) return;

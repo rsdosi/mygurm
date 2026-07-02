@@ -1,18 +1,20 @@
 "use client";
 
+import type { TimelineEvent } from "./memories";
+
 /**
- * On-device gallery, kept in IndexedDB. It holds two kinds of items:
- *  - "strip"  : a generated four-cut PNG (stored as a data URL)
- *  - "upload" : a photo/video the couple added themselves (stored as a Blob)
- *
- * Everything lives in this browser on this device — there's no shared cloud
- * store in this setup. Swap this module for calls to a blob store (R2/S3) if
- * you want the two of you to share one album across devices.
+ * On-device store (IndexedDB), used as the fallback when the shared Vercel Blob
+ * store isn't configured. Holds:
+ *  - "strips" : generated four-cut PNGs + user-uploaded photos/videos
+ *  - "events" : custom timeline memories added by a user
  */
 
 const DB_NAME = "mygurm";
 const STORE = "strips";
-const DB_VERSION = 1;
+const EVENTS = "events";
+const DB_VERSION = 2;
+
+export type Role = "you" | "me";
 
 export type StripItem = {
   id: string;
@@ -29,6 +31,9 @@ export type UploadItem = {
   mime: string;
   blob: Blob;
   createdAt: number;
+  role?: Role;
+  /** Timeline event this photo is tagged to, if any. */
+  eventId?: string;
 };
 
 export type GalleryItem = StripItem | UploadItem;
@@ -45,6 +50,9 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE)) {
         const os = db.createObjectStore(STORE, { keyPath: "id" });
         os.createIndex("createdAt", "createdAt");
+      }
+      if (!db.objectStoreNames.contains(EVENTS)) {
+        db.createObjectStore(EVENTS, { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -80,8 +88,12 @@ export async function saveStrip(rec: {
   await put({ kind: "strip", ...rec });
 }
 
-/** Add a user-picked photo/video file. Uses the file's own date when known. */
-export async function addUpload(file: File): Promise<void> {
+/** Add a user-picked photo/video, optionally tagged to a role + event. */
+export async function addUpload(
+  file: File,
+  role?: Role,
+  eventId?: string
+): Promise<void> {
   await put({
     id: newId(),
     kind: "upload",
@@ -89,6 +101,8 @@ export async function addUpload(file: File): Promise<void> {
     mime: file.type || "application/octet-stream",
     blob: file,
     createdAt: file.lastModified || Date.now(),
+    role,
+    eventId,
   });
 }
 
@@ -113,6 +127,31 @@ export async function deleteItem(id: string): Promise<void> {
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+}
+
+// ---- Custom timeline events ----
+
+export async function saveEvent(evt: TimelineEvent): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(EVENTS, "readwrite");
+    tx.objectStore(EVENTS).put(evt);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function getEvents(): Promise<TimelineEvent[]> {
+  const db = await openDB();
+  const events = await new Promise<TimelineEvent[]>((resolve, reject) => {
+    const tx = db.transaction(EVENTS, "readonly");
+    const req = tx.objectStore(EVENTS).getAll();
+    req.onsuccess = () => resolve((req.result as TimelineEvent[]) ?? []);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return events;
 }
 
 /** Stable id generator (crypto.randomUUID with a fallback). */

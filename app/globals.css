@@ -159,3 +159,21 @@
     animation: none;
   }
 }
+
+/* Pet-the-Rugs: faint smileys + hearts floating up and fading out. */
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.5) rotate(var(--r, 0deg));
+  }
+  18% {
+    opacity: var(--o, 0.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-160px) scale(1.15) rotate(var(--r, 0deg));
+  }
+}
+.animate-float-up {
+  animation: floatUp var(--d, 2.4s) ease-out forwards;
+}

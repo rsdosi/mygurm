@@ -1,9 +1,26 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { memories, type Memory } from "@/lib/memories";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ChipotleCounter from "./ChipotleCounter";
+import AddMemory from "./AddMemory";
+import Lightbox, { type LightboxItem } from "./Lightbox";
+import { addEvent, listEvents, listPhotos, type PhotoEntry } from "@/lib/store";
+import type { TimelineEvent } from "@/lib/memories";
 
-function Tag({ tone, children }: { tone: "you" | "me"; children: React.ReactNode }) {
+function formatWhen(ts: number): string {
+  return new Date(ts).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function Tag({
+  tone,
+  children,
+}: {
+  tone: "you" | "me";
+  children: React.ReactNode;
+}) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-medium ${
@@ -15,11 +32,17 @@ function Tag({ tone, children }: { tone: "you" | "me"; children: React.ReactNode
   );
 }
 
-function MemoryCard({ m }: { m: Memory }) {
+function MemoryCard({
+  m,
+  cover,
+  onOpenPhotos,
+}: {
+  m: TimelineEvent;
+  cover?: PhotoEntry;
+  onOpenPhotos?: () => void;
+}) {
   const size = m.size ?? "normal";
   const accent = m.tone === "you" ? "text-you" : "text-me";
-  const dateSize =
-    size === "biggest" ? "text-2xl" : size === "big" ? "text-xl" : "text-lg";
   const titleSize =
     size === "biggest"
       ? "text-2xl sm:text-3xl"
@@ -49,9 +72,47 @@ function MemoryCard({ m }: { m: Memory }) {
         </span>
       </div>
 
-      <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-        {m.body}
-      </p>
+      {m.body && (
+        <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
+          {m.body}
+        </p>
+      )}
+
+      {cover && (
+        <button
+          type="button"
+          onClick={onOpenPhotos}
+          className="mt-4 block w-full overflow-hidden rounded-2xl bg-white p-2 shadow-soft transition-transform hover:-translate-y-0.5"
+        >
+          {cover.isVideo ? (
+            <video
+              src={cover.url}
+              muted
+              playsInline
+              preload="metadata"
+              className="h-40 w-full rounded-xl object-cover"
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={cover.url}
+              alt={`A photo from ${m.title}`}
+              className="h-40 w-full rounded-xl object-cover"
+              loading="lazy"
+            />
+          )}
+          <span className="mt-1.5 flex items-center gap-1.5 px-1 text-[11px] text-muted">
+            {cover.role && (
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  cover.role === "you" ? "bg-you" : "bg-me"
+                }`}
+              />
+            )}
+            our photos from this day →
+          </span>
+        </button>
+      )}
 
       {m.quote && (
         <p
@@ -63,12 +124,11 @@ function MemoryCard({ m }: { m: Memory }) {
 
       {(m.chipotle || m.flowers || size !== "normal") && (
         <div className="mt-4 flex flex-wrap gap-2">
-          {size === "biggest" && (
-            <Tag tone={m.tone}>💗 the day it began</Tag>
-          )}
+          {size === "biggest" && <Tag tone={m.tone}>💗 the day it began</Tag>}
           {size === "big" && <Tag tone={m.tone}>✨ a big one</Tag>}
           {m.chipotle && <Tag tone={m.tone}>🌯 Chipotle</Tag>}
           {m.flowers && <Tag tone={m.tone}>💐 {m.flowers}</Tag>}
+          {m.custom && <Tag tone={m.tone}>✍️ added by us</Tag>}
         </div>
       )}
     </div>
@@ -88,9 +148,45 @@ function MemoryCard({ m }: { m: Memory }) {
 }
 
 export default function Timeline() {
+  const [events, setEvents] = useState<TimelineEvent[] | null>(null);
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [lb, setLb] = useState<{ items: LightboxItem[]; index: number } | null>(
+    null
+  );
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
 
+  async function load() {
+    const [evs, phs] = await Promise.all([
+      listEvents().catch(() => []),
+      listPhotos().catch(() => []),
+    ]);
+    setEvents(evs);
+    setPhotos(phs);
+  }
   useEffect(() => {
+    load();
+  }, []);
+
+  // eventId -> its photos (oldest first for a natural browse)
+  const photosByEvent = useMemo(() => {
+    const map = new Map<string, PhotoEntry[]>();
+    for (const p of [...photos].sort((a, b) => a.createdAt - b.createdAt)) {
+      if (!p.eventId) continue;
+      const arr = map.get(p.eventId) ?? [];
+      arr.push(p);
+      map.set(p.eventId, arr);
+    }
+    return map;
+  }, [photos]);
+
+  const chipotleCount = useMemo(
+    () => (events ?? []).filter((e) => e.chipotle).length,
+    [events]
+  );
+
+  useEffect(() => {
+    if (!events) return;
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -104,64 +200,108 @@ export default function Timeline() {
     );
     cardsRef.current.forEach((el) => el && io.observe(el));
     return () => io.disconnect();
-  }, []);
+  }, [events]);
+
+  function openEventPhotos(eventId: string) {
+    const list = photosByEvent.get(eventId) ?? [];
+    if (list.length === 0) return;
+    setLb({
+      items: list.map((p) => ({
+        url: p.url,
+        isVideo: p.isVideo,
+        role: p.role,
+        caption: formatWhen(p.createdAt),
+      })),
+      index: 0,
+    });
+  }
 
   return (
-    <ol className="relative mx-auto max-w-3xl overflow-x-clip">
-      {/* the rail */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-3 left-5 top-3 w-0.5 bg-gradient-to-b from-you/50 via-line to-me/50 md:left-1/2 md:-translate-x-1/2"
-      />
+    <>
+      <div className="flex flex-col items-center gap-5">
+        <ChipotleCounter count={chipotleCount} />
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-2 rounded-pill border border-line bg-white px-5 py-2.5 text-sm font-medium text-ink shadow-soft transition-transform hover:-translate-y-0.5"
+        >
+          ＋ Add a memory
+        </button>
+      </div>
 
-      {memories.map((m, i) => {
-        const left = i % 2 === 0;
-        const big = m.size && m.size !== "normal";
-        return (
-          <li key={m.date} className="relative">
-            <div
-              className={`flex ${left ? "md:flex-row" : "md:flex-row-reverse"} ${
-                big ? "my-10 md:my-14" : "my-8 md:my-10"
-              }`}
-            >
-              {/* card side */}
-              <div className="w-full pl-14 md:w-1/2 md:pl-0 md:px-10">
-                <div
-                  ref={(el) => {
-                    cardsRef.current[i] = el;
-                  }}
-                  className={`reveal ${left ? "md:reveal-left" : "md:reveal-right"} ${
-                    left ? "md:text-left" : "md:text-left"
-                  }`}
-                >
-                  <MemoryCard m={m} />
+      <ol className="relative mx-auto mt-14 max-w-3xl overflow-x-clip">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3 left-5 top-3 w-0.5 bg-gradient-to-b from-you/50 via-line to-me/50 md:left-1/2 md:-translate-x-1/2"
+        />
+
+        {(events ?? []).map((m, i) => {
+          const left = i % 2 === 0;
+          const big = m.size && m.size !== "normal";
+          const list = photosByEvent.get(m.id);
+          return (
+            <li key={m.id} className="relative">
+              <div
+                className={`flex ${left ? "md:flex-row" : "md:flex-row-reverse"} ${
+                  big ? "my-10 md:my-14" : "my-8 md:my-10"
+                }`}
+              >
+                <div className="w-full pl-14 md:w-1/2 md:px-10 md:pl-0">
+                  <div
+                    ref={(el) => {
+                      cardsRef.current[i] = el;
+                    }}
+                    className={`reveal ${left ? "md:reveal-left" : "md:reveal-right"}`}
+                  >
+                    <MemoryCard
+                      m={m}
+                      cover={list?.[0]}
+                      onOpenPhotos={() => openEventPhotos(m.id)}
+                    />
+                  </div>
                 </div>
+                <div className="hidden md:block md:w-1/2" />
               </div>
-              {/* empty half on desktop */}
-              <div className="hidden md:block md:w-1/2" />
-            </div>
 
-            {/* node dot */}
-            <span
-              aria-hidden="true"
-              className={`absolute top-8 left-5 -translate-x-1/2 md:left-1/2 md:top-1/2 md:-translate-y-1/2 rounded-full border-4 border-bg ${
-                m.tone === "you" ? "bg-you" : "bg-me"
-              } ${
-                m.size === "biggest"
-                  ? "h-7 w-7 animate-heartbeat"
-                  : m.size === "big"
-                    ? "h-6 w-6"
-                    : "h-4 w-4"
-              }`}
-            />
-          </li>
-        );
-      })}
+              <span
+                aria-hidden="true"
+                className={`absolute left-5 top-8 -translate-x-1/2 rounded-full border-4 border-bg md:left-1/2 md:top-1/2 md:-translate-y-1/2 ${
+                  m.tone === "you" ? "bg-you" : "bg-me"
+                } ${
+                  m.size === "biggest"
+                    ? "h-7 w-7 animate-heartbeat"
+                    : m.size === "big"
+                      ? "h-6 w-6"
+                      : "h-4 w-4"
+                }`}
+              />
+            </li>
+          );
+        })}
 
-      {/* the beginning marker */}
-      <li className="relative pb-4 pt-2 text-center">
-        <p className="text-sm text-muted">…and this is only the beginning 💗</p>
-      </li>
-    </ol>
+        <li className="relative pb-4 pt-2 text-center">
+          <p className="text-sm text-muted">…and this is only the beginning 💗</p>
+        </li>
+      </ol>
+
+      {adding && (
+        <AddMemory
+          onClose={() => setAdding(false)}
+          onAdd={async (evt) => {
+            await addEvent(evt);
+            await load();
+          }}
+        />
+      )}
+
+      {lb && (
+        <Lightbox
+          items={lb.items}
+          index={lb.index}
+          onClose={() => setLb(null)}
+          onIndex={(i) => setLb((s) => (s ? { ...s, index: i } : s))}
+        />
+      )}
+    </>
   );
 }

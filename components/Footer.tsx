@@ -7,6 +7,7 @@ const groups = [
       { href: "/timeline", label: "Our story" },
       { href: "/photobooths", label: "Photobooths" },
       { href: "/gallery", label: "Gallery" },
+      { href: "/rugs", label: "Pet Rugs" },
       { href: "/how-it-works", label: "How it works" },
       { href: "/faq", label: "FAQ" },
     ],

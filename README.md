@@ -77,11 +77,23 @@ Then open `http://localhost:3000`, click **Create a room**, and open the same
 
 Copy `.env.example` and fill in what you need.
 
-### Next.js (client)
+### Next.js (client + server)
 
 | Var | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_PARTYKIT_HOST` | Where the PartyKit server lives. Local: `127.0.0.1:1999` (default). Prod: `<project>.<user>.partykit.dev`. |
+| `SITE_PASSWORD` | The shared lock-screen password (defaults to the built-in key). |
+| `BLOB_READ_WRITE_TOKEN` | Enables the **shared** "Pictures of us" album + user-added timeline events via Vercel Blob. Auto-set when you enable Blob under Storage in the Vercel dashboard. If unset, those fall back to on-device browser storage. |
+
+### Shared content vs. on-device
+
+- **Pictures of us** (`/gallery`) and **user-added timeline memories** persist to
+  Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set — permanent and shared with
+  everyone who has the site password. Photos are tagged with the uploader
+  (pink = you, blue = me) and can be tagged to a timeline event; a tagged photo
+  then shows on that day's box in **Our story** (`/timeline`).
+- **Photobooth strips** (`/photobooths`) stay on-device (per browser).
+- **Rugs** lives at `public/rugs.mp4` — swap in a new clip to change him.
 
 ### PartyKit (server-side vars)
 

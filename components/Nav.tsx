@@ -8,6 +8,7 @@ const links = [
   { href: "/timeline", label: "Our story" },
   { href: "/photobooths", label: "Photobooths" },
   { href: "/gallery", label: "Gallery" },
+  { href: "/rugs", label: "Pet Rugs" },
   { href: "/faq", label: "FAQ" },
 ];
 
@@ -41,8 +42,8 @@ export default function Nav() {
         <Wordmark />
 
         {/* Desktop links */}
-        <div className="hidden items-center gap-8 md:flex">
-          <ul className="flex items-center gap-7 text-sm text-muted">
+        <div className="hidden items-center gap-6 lg:flex">
+          <ul className="flex items-center gap-5 text-sm text-muted">
             {links.map((link) => (
               <li key={link.href}>
                 <Link
@@ -63,7 +64,7 @@ export default function Nav() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/70 text-ink md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/70 text-ink lg:hidden"
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
@@ -87,7 +88,7 @@ export default function Nav() {
       {open && (
         <div
           id="mobile-menu"
-          className="border-t border-line bg-bg/95 px-5 pb-6 pt-2 md:hidden"
+          className="border-t border-line bg-bg/95 px-5 pb-6 pt-2 lg:hidden"
         >
           <ul className="flex flex-col divide-y divide-line">
             {links.map((link) => (

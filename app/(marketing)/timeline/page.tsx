@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Pill from "@/components/Pill";
 import Section from "@/components/Section";
 import Timeline from "@/components/Timeline";
-import ChipotleCounter from "@/components/ChipotleCounter";
-import { chipotleCount } from "@/lib/memories";
 
 export const metadata: Metadata = {
   title: "Our story",
@@ -26,15 +24,11 @@ export default function TimelinePage() {
         </h1>
         <p className="mt-5 text-lg text-muted">
           A little timeline of us — every movie, every drive, every Chipotle
-          run. Scroll down and relive it.
+          run. Add new memories and tag your photos to any day.
         </p>
-
-        <div className="mt-9 flex justify-center">
-          <ChipotleCounter count={chipotleCount} />
-        </div>
       </div>
 
-      <div className="relative mt-16">
+      <div className="relative mt-12">
         <Timeline />
       </div>
     </Section>

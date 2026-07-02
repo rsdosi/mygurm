@@ -101,7 +101,7 @@ export default function Photobooth({
   return (
     <div className="rounded-card border border-line bg-white p-6 text-center shadow-soft sm:p-8">
       <h2 className="font-display text-2xl font-semibold sm:text-3xl">
-        인생네컷 photo booth
+        Four-cut photo booth
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted">
         Four synced shots, one keepsake. When you press start, both cameras

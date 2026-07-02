@@ -1,4 +1,4 @@
-/** Decorative "인생네컷" four-cut strip mockup for the hero. Purely visual. */
+/** Decorative four-cut strip mockup for the hero. Purely visual. */
 const faces: [string, string][] = [
   ["🥰", "😎"],
   ["😊", "😄"],
@@ -41,7 +41,7 @@ export default function PhotoStripMockup() {
             mygurm
           </p>
           <p className="text-[11px] tracking-wide text-muted">
-            인생네컷 · MYGRM
+            four cuts · MYGRM
           </p>
         </div>
       </div>

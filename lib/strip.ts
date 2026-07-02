@@ -212,7 +212,7 @@ export async function buildStrip(
   ctx.font = uiFont(22, 500);
   ctx.fillStyle = COLORS.muted;
   ctx.fillText(
-    `인생네컷 · ${code.padEnd(CODE_LENGTH, " ").trim()}`,
+    `four cuts · ${code.padEnd(CODE_LENGTH, " ").trim()}`,
     W / 2,
     footerY + 30
   );

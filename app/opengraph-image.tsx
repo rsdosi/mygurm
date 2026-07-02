@@ -95,7 +95,7 @@ export default function OpengraphImage() {
               }}
             />
             <div style={{ fontSize: 40, color: "#6B7280", marginLeft: 10 }}>
-              인생네컷
+              four cuts
             </div>
           </div>
           <div

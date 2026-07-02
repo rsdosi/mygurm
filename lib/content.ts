@@ -13,7 +13,7 @@ export const activities: Activity[] = [
   {
     slug: "photo-booth",
     emoji: "📸",
-    title: "인생네컷 photo booth",
+    title: "Four-cut photo booth",
     blurb:
       "Snap a synced four-cut strip from two cities and stitch it into one keepsake.",
     tag: "Signature",

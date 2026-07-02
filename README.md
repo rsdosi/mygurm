@@ -1,7 +1,7 @@
 # mygurm · photobooth for two
 
 A photobooth for long-distance couples. Open a room, send the 5-character code,
-and take a synced four-cut 인생네컷 strip together over live video — no matter how
+and take a synced four-cut strip together over live video — no matter how
 many miles or timezones are between **you** (pink) and **me** (blue).
 
 Built with **Next.js 14** (App Router, TypeScript, Tailwind) for the site + app,

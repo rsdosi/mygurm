@@ -63,10 +63,11 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+          <p>mygurm · fun dates for long distance</p>
           <p>
-            mygurm 인생네컷 · fun dates for long distance
+            © {new Date().getFullYear()} mygurm. All rights reserved.{" "}
+            <span className="text-ink">(she&apos;s all mine!)</span>
           </p>
-          <p>© {new Date().getFullYear()} mygurm. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -27,7 +27,6 @@ export const metadata: Metadata = {
     "long distance",
     "couples",
     "photobooth",
-    "인생네컷",
     "date ideas",
     "video chat",
   ],

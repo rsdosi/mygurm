@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SHOTS, type Role, type ServerMessage } from "./room-protocol";
 import { buildStrip, type ShotPair } from "./strip";
-import { newId, saveStrip } from "./gallery";
+import { addStrip } from "./store";
 import type { RoomHandle } from "./useRoom";
 import type { DuoVideo } from "./useDuoVideo";
 
@@ -119,15 +119,10 @@ export function usePhotobooth(
         );
         setStripUrl(url);
         setBuilding(false);
-        // Auto-save this keepsake to the on-device gallery.
+        // Auto-save this keepsake (shared album when configured, else device).
         if (url) {
           try {
-            await saveStrip({
-              id: newId(),
-              code: state.code,
-              dataUrl: url,
-              createdAt,
-            });
+            await addStrip(url, state.code);
           } catch {
             /* gallery is best-effort */
           }

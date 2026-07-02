@@ -33,10 +33,26 @@ function parsePath(pathname: string): {
   return { role, eventId };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!configured()) {
     return NextResponse.json({ configured: false, items: [] });
   }
+  const scope = new URL(request.url).searchParams.get("scope");
+
+  // Photobooth strips: strips/<code>/<file>.png
+  if (scope === "strips") {
+    const { blobs } = await list({ prefix: "strips/" });
+    const items = blobs
+      .map((b) => ({
+        url: b.url,
+        pathname: b.pathname,
+        code: b.pathname.split("/")[1] ?? "",
+        createdAt: new Date(b.uploadedAt).getTime(),
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt);
+    return NextResponse.json({ configured: true, items });
+  }
+
   const { blobs } = await list({ prefix: PREFIX });
   const items = blobs
     .map((b) => {

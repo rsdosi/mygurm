@@ -7,6 +7,7 @@ import {
   getAllItems,
   getEvents,
   saveEvent,
+  saveStrip,
   newId,
   type GalleryItem,
   type StripItem,
@@ -36,6 +37,7 @@ export type StripEntry = {
   url: string;
   code: string;
   createdAt: number;
+  source: StoreMode;
 };
 
 const VIDEO_RE = /\.(mp4|webm|mov|m4v|ogg|ogv)$/i;
@@ -137,18 +139,73 @@ export function revokePhotos(entries: PhotoEntry[]) {
   });
 }
 
-// ---- Strips (photobooths) — always kept on-device ----
+// ---- Strips (photobooths) — shared when configured, else on-device ----
 
-export async function listStrips(): Promise<StripEntry[]> {
+async function localStrips(): Promise<StripEntry[]> {
   const raw: GalleryItem[] = await getAllItems().catch(() => []);
   return raw
     .filter((i): i is StripItem => i.kind === "strip")
-    .map((s) => ({ id: s.id, url: s.dataUrl, code: s.code, createdAt: s.createdAt }))
-    .sort((a, b) => b.createdAt - a.createdAt);
+    .map((s) => ({
+      id: s.id,
+      url: s.dataUrl,
+      code: s.code,
+      createdAt: s.createdAt,
+      source: "local" as const,
+    }));
 }
 
-export async function deleteStrip(id: string): Promise<void> {
-  await deleteItem(id);
+export async function listStrips(): Promise<StripEntry[]> {
+  const mode = await resolveMode();
+  const local = await localStrips();
+  if (mode !== "remote") return local.sort((a, b) => b.createdAt - a.createdAt);
+
+  // Shared strips from Blob, plus any earlier on-device strips (not lost).
+  let remote: StripEntry[] = [];
+  try {
+    const res = await fetch("/api/uploads?scope=strips", { cache: "no-store" });
+    const data = await res.json();
+    const items = (data.items ?? []) as Array<{
+      url: string;
+      code: string;
+      createdAt: number;
+    }>;
+    remote = items.map((it) => ({
+      id: it.url,
+      url: it.url,
+      code: it.code,
+      createdAt: it.createdAt,
+      source: "remote" as const,
+    }));
+  } catch {
+    /* ignore */
+  }
+  return [...remote, ...local].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Save a finished strip (shared to Blob when configured, else on-device). */
+export async function addStrip(dataUrl: string, code: string): Promise<void> {
+  const mode = await resolveMode();
+  if (mode === "remote") {
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `${Date.now()}.png`, { type: "image/png" });
+    await upload(`strips/${code}/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: "/api/uploads",
+      contentType: "image/png",
+    });
+  } else {
+    await saveStrip({ id: newId(), code, dataUrl, createdAt: Date.now() });
+  }
+}
+
+export async function deleteStrip(entry: StripEntry): Promise<void> {
+  if (entry.source === "remote") {
+    await fetch(`/api/uploads?url=${encodeURIComponent(entry.url)}`, {
+      method: "DELETE",
+    });
+  } else {
+    await deleteItem(entry.id);
+  }
 }
 
 // ---- Timeline events (seed + user-added) ----

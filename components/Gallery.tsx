@@ -156,6 +156,7 @@ function download(url: string, name: string) {
 
 function StripsGallery() {
   const [strips, setStrips] = useState<StripEntry[] | null>(null);
+  const [storeMode, setStoreMode] = useState<StoreMode | null>(null);
   const [box, setBox] = useState<number | null>(null);
 
   async function load() {
@@ -163,6 +164,7 @@ function StripsGallery() {
   }
   useEffect(() => {
     load();
+    resolveMode().then(setStoreMode);
   }, []);
 
   const lb: LightboxItem[] = useMemo(
@@ -200,8 +202,9 @@ function StripsGallery() {
   return (
     <>
       <p className="mb-6 text-sm text-muted">
-        {strips.length} {strips.length === 1 ? "strip" : "strips"} · saved on
-        this device
+        {storeMode === "remote"
+          ? `${strips.length} shared — visible to both of you 💗`
+          : `${strips.length} ${strips.length === 1 ? "strip" : "strips"} · saved on this device`}
       </p>
       <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
         {strips.map((s, i) => (
@@ -214,7 +217,7 @@ function StripsGallery() {
             onOpen={() => setBox(i)}
             onDownload={() => download(s.url, `mygurm-${s.code}.png`)}
             onRemove={async () => {
-              await deleteStrip(s.id);
+              await deleteStrip(s);
               load();
             }}
           />

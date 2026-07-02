@@ -87,12 +87,14 @@ Copy `.env.example` and fill in what you need.
 
 ### Shared content vs. on-device
 
-- **Pictures of us** (`/gallery`) and **user-added timeline memories** persist to
-  Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set — permanent and shared with
-  everyone who has the site password. Photos are tagged with the uploader
-  (pink = you, blue = me) and can be tagged to a timeline event; a tagged photo
-  then shows on that day's box in **Our story** (`/timeline`).
-- **Photobooth strips** (`/photobooths`) stay on-device (per browser).
+- **Pictures of us** (`/gallery`), **photobooth strips** (`/photobooths`), and
+  **user-added timeline memories** persist to Vercel Blob when
+  `BLOB_READ_WRITE_TOKEN` is set — permanent and shared with everyone who has
+  the site password. Without the token they fall back to on-device browser
+  storage (earlier on-device strips are still shown alongside shared ones).
+- Photos are tagged with the uploader (pink = you, blue = me) and can be tagged
+  to a timeline event; a tagged photo then shows on that day's box in
+  **Our story** (`/timeline`).
 - **Rugs** lives at `public/rugs.mp4` — swap in a new clip to change him.
 
 ### PartyKit (server-side vars)

@@ -95,7 +95,16 @@ export class RoomServer extends Server<Env> {
     return new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 
-  onConnect(conn: Connection<ConnState>, _ctx: ConnectionContext) {
+  private requestedRole(ctx: ConnectionContext): Role | null {
+    try {
+      const r = new URL(ctx.request.url).searchParams.get("role");
+      return r === "you" || r === "me" ? r : null;
+    } catch {
+      return null;
+    }
+  }
+
+  onConnect(conn: Connection<ConnState>, ctx: ConnectionContext) {
     const used = this.connectedRoles(conn.id);
 
     // Cap at two people — reject a third.
@@ -110,7 +119,13 @@ export class RoomServer extends Server<Env> {
       return;
     }
 
-    const role = ROLES.find((r) => !used.includes(r)) ?? "you";
+    // Honor the color role from whoever is logged in (gurm=you, ram=me);
+    // fall back to first-free if it's missing or already taken.
+    const requested = this.requestedRole(ctx);
+    const role: Role =
+      requested && !used.includes(requested)
+        ? requested
+        : ROLES.find((r) => !used.includes(r)) ?? "you";
     conn.setState({ role });
 
     void this.pingLobby("claim");

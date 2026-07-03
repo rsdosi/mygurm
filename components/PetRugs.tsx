@@ -43,20 +43,86 @@ function Heart({ size, opacity }: { size: number; opacity: number }) {
 
 let seq = 0;
 
+const LOCAL_KEY = "mygurm_rugs_count";
+
 export default function PetRugs() {
   const [emotes, setEmotes] = useState<Emote[]>([]);
-  const [pets, setPets] = useState(0);
+  const [count, setCount] = useState<number | null>(null); // total pets (persisted)
   const [videoOk, setVideoOk] = useState(true);
   const rugsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const sharedRef = useRef(false); // is the shared server counter in use?
+  const pendingRef = useRef(0); // un-flushed pets
+  const flushTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Show Rugs bobbing once on load so he's never a black frame.
   useEffect(() => {
     videoRef.current?.play().catch(() => {});
   }, []);
 
+  // Load the saved total (shared server counter, else on-device).
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/rugs", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        if (d.configured) {
+          sharedRef.current = true;
+          setCount(typeof d.count === "number" ? d.count : 0);
+        } else {
+          const local = Number(localStorage.getItem(LOCAL_KEY) || "0");
+          setCount(Number.isFinite(local) ? local : 0);
+        }
+      })
+      .catch(() => {
+        const local = Number(localStorage.getItem(LOCAL_KEY) || "0");
+        setCount(Number.isFinite(local) ? local : 0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Debounced persistence of the accumulated pets.
+  const flush = useCallback(() => {
+    const delta = pendingRef.current;
+    if (delta <= 0) return;
+    pendingRef.current = 0;
+    if (sharedRef.current) {
+      fetch("/api/rugs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ delta }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          // Reconcile with the authoritative shared total (covers the partner
+          // petting at the same time).
+          if (typeof d.count === "number") {
+            setCount((c) => Math.max(c ?? 0, d.count + pendingRef.current));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setCount((c) => {
+        const next = (c ?? 0);
+        try {
+          localStorage.setItem(LOCAL_KEY, String(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    }
+  }, []);
+
   const pet = useCallback(() => {
-    setPets((n) => n + 1);
+    // Optimistic bump + queue a debounced save.
+    setCount((c) => (c ?? 0) + 1);
+    pendingRef.current += 1;
+    clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(flush, 900);
 
     // Play the bobbing animation from the top on every pet.
     const v = videoRef.current;
@@ -94,7 +160,15 @@ export default function PetRugs() {
     window.setTimeout(() => {
       setEmotes((cur) => cur.filter((e) => !ids.has(e.id)));
     }, 3400);
-  }, []);
+  }, [flush]);
+
+  // Save any pending pets when leaving the page.
+  useEffect(() => {
+    return () => {
+      clearTimeout(flushTimer.current);
+      flush();
+    };
+  }, [flush]);
 
   return (
     <div className="relative flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
@@ -152,17 +226,21 @@ export default function PetRugs() {
         </button>
 
         <p className="mt-6 font-display text-2xl font-semibold text-ink sm:text-3xl">
-          {pets === 0
-            ? "pet Rugs! 🐆"
-            : pets < 5
-              ? "aww, he's happy!"
-              : pets < 20
-                ? "he loves you!"
-                : "Rugs is the happiest cheetah alive 💗"}
+          {count === null
+            ? " "
+            : count === 0
+              ? "pet Rugs! 🐆"
+              : count < 25
+                ? "aww, he's happy!"
+                : count < 100
+                  ? "he loves you!"
+                  : "Rugs is the happiest cheetah alive 💗"}
         </p>
-        {pets > 0 && (
+        {count !== null && count > 0 && (
           <p className="mt-2 text-sm text-muted">
-            pet {pets}× · keep going
+            petted{" "}
+            <span className="font-semibold text-ink tabular-nums">{count}</span>{" "}
+            {count === 1 ? "time" : "times"} · {sharedRef.current ? "saved 💗" : "keep going"}
           </p>
         )}
       </div>

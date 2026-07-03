@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Button from "./Button";
 import Lightbox, { type LightboxItem } from "./Lightbox";
+import { useIdentity } from "@/lib/identity";
 import {
   addPhotos,
   deletePhoto,
@@ -232,13 +233,12 @@ function StripsGallery() {
 
 // ---------- Pictures of us (shared uploads) ----------
 
-const ROLE_KEY = "mygurm_uploader";
-
 function UploadsGallery() {
+  const { role: identityRole, name } = useIdentity();
+  const role: Role = identityRole ?? "you";
   const [photos, setPhotos] = useState<PhotoEntry[] | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [storeMode, setStoreMode] = useState<StoreMode | null>(null);
-  const [role, setRole] = useState<Role>("you");
   const [eventId, setEventId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -249,24 +249,9 @@ function UploadsGallery() {
   const photosRef = useRef<PhotoEntry[]>([]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ROLE_KEY);
-      if (saved === "you" || saved === "me") setRole(saved);
-    } catch {
-      /* ignore */
-    }
     resolveMode().then(setStoreMode);
     listEvents().then(setEvents).catch(() => {});
   }, []);
-
-  function chooseRole(r: Role) {
-    setRole(r);
-    try {
-      localStorage.setItem(ROLE_KEY, r);
-    } catch {
-      /* ignore */
-    }
-  }
 
   async function load() {
     revokePhotos(photosRef.current);
@@ -346,28 +331,22 @@ function UploadsGallery() {
         <div className="pointer-events-none absolute inset-0 z-10 rounded-card ring-2 ring-me ring-offset-4 ring-offset-bg" />
       )}
 
-      {/* Controls: who + event tag */}
+      {/* Controls: who (auto from login) + event tag */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="inline-flex items-center gap-1 rounded-pill border border-line bg-white p-1 text-sm">
-          <span className="px-2 text-xs text-muted">uploading as</span>
-          <button
-            type="button"
-            onClick={() => chooseRole("you")}
-            className={`rounded-pill px-3 py-1 text-xs font-medium ${
-              role === "you" ? "bg-you-soft text-you-ink" : "text-muted"
+        <div className="inline-flex items-center gap-2 rounded-pill border border-line bg-white px-3 py-1.5 text-sm">
+          <span className="text-xs text-muted">uploading as</span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-0.5 text-xs font-medium ${
+              role === "you" ? "bg-you-soft text-you-ink" : "bg-me-soft text-me-ink"
             }`}
           >
-            ● you
-          </button>
-          <button
-            type="button"
-            onClick={() => chooseRole("me")}
-            className={`rounded-pill px-3 py-1 text-xs font-medium ${
-              role === "me" ? "bg-me-soft text-me-ink" : "text-muted"
-            }`}
-          >
-            ● me
-          </button>
+            <span
+              className={`h-2 w-2 rounded-full ${
+                role === "you" ? "bg-you" : "bg-me"
+              }`}
+            />
+            {name ?? (role === "you" ? "you" : "me")}
+          </span>
         </div>
 
         <label className="inline-flex items-center gap-2 rounded-pill border border-line bg-white px-2 py-1 text-sm">

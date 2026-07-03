@@ -3,6 +3,7 @@
 import { PartySocket } from "partysocket";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PARTYKIT_HOST } from "./party";
+import { readRole } from "./identity";
 import {
   emptyState,
   type ClientMessage,
@@ -41,6 +42,9 @@ export function useRoom(code: string): RoomHandle {
       host: PARTYKIT_HOST,
       party: "main",
       room: code,
+      // Ask the server for our color role based on who's logged in
+      // (gurm → "you"/pink, ram → "me"/blue).
+      query: { role: readRole() ?? "" },
       // Built-in exponential-backoff reconnect + send buffering.
       maxReconnectionDelay: 8000,
       minReconnectionDelay: 500,

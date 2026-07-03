@@ -158,7 +158,7 @@ export default function RoomClient({ code }: { code: string }) {
 
       {/* Video */}
       <div className="mt-6">
-        <DuoVideo media={media} />
+        <DuoVideo media={media} selfRole={self?.role ?? "you"} />
       </div>
 
       {/* Booth */}

@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { UNLOCK_COOKIE, unlockToken } from "./lib/auth";
+import { UNLOCK_COOKIE, validTokens } from "./lib/auth";
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(UNLOCK_COOKIE)?.value;
-  const expected = await unlockToken();
+  const valid = await validTokens();
 
-  if (token && token === expected) {
+  if (token && valid.has(token)) {
     return NextResponse.next();
   }
 

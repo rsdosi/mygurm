@@ -55,3 +55,14 @@ export async function validTokens(): Promise<Set<string>> {
   const tokens = await Promise.all(USERS.map(tokenForUser));
   return new Set(tokens);
 }
+
+/** Resolve which user an auth-cookie token belongs to (tamper-resistant). */
+export async function userFromToken(
+  token: string | undefined
+): Promise<SiteUser | null> {
+  if (!token) return null;
+  for (const u of USERS) {
+    if ((await tokenForUser(u)) === token) return u;
+  }
+  return null;
+}

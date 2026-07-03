@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readName } from "@/lib/identity";
 
 type Emote = {
   id: number;
@@ -43,7 +44,11 @@ function Heart({ size, opacity }: { size: number; opacity: number }) {
 
 let seq = 0;
 
-const LOCAL_KEY = "mygurm_rugs_count";
+/** On-device fallback key, scoped to the logged-in user so each login keeps its
+ *  own local count (mirrors the per-user server counter). */
+function localKeyFor(name: string | null): string {
+  return name ? `mygurm_rugs_count_${name}` : "mygurm_rugs_count";
+}
 
 export default function PetRugs() {
   const [emotes, setEmotes] = useState<Emote[]>([]);
@@ -51,18 +56,24 @@ export default function PetRugs() {
   const [videoOk, setVideoOk] = useState(true);
   const rugsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const sharedRef = useRef(false); // is the shared server counter in use?
+  const sharedRef = useRef(false); // is the per-user server counter in use?
   const pendingRef = useRef(0); // un-flushed pets
   const flushTimer = useRef<ReturnType<typeof setTimeout>>();
+  const localKeyRef = useRef(localKeyFor(null)); // set once identity is known
 
   // Show Rugs bobbing once on load so he's never a black frame.
   useEffect(() => {
     videoRef.current?.play().catch(() => {});
   }, []);
 
-  // Load the saved total (shared server counter, else on-device).
+  // Load the saved total (per-user server counter, else on-device).
   useEffect(() => {
     let alive = true;
+    localKeyRef.current = localKeyFor(readName());
+    const loadLocal = () => {
+      const local = Number(localStorage.getItem(localKeyRef.current) || "0");
+      setCount(Number.isFinite(local) ? local : 0);
+    };
     fetch("/api/rugs", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
@@ -71,13 +82,11 @@ export default function PetRugs() {
           sharedRef.current = true;
           setCount(typeof d.count === "number" ? d.count : 0);
         } else {
-          const local = Number(localStorage.getItem(LOCAL_KEY) || "0");
-          setCount(Number.isFinite(local) ? local : 0);
+          loadLocal();
         }
       })
       .catch(() => {
-        const local = Number(localStorage.getItem(LOCAL_KEY) || "0");
-        setCount(Number.isFinite(local) ? local : 0);
+        if (alive) loadLocal();
       });
     return () => {
       alive = false;
@@ -108,7 +117,7 @@ export default function PetRugs() {
       setCount((c) => {
         const next = (c ?? 0);
         try {
-          localStorage.setItem(LOCAL_KEY, String(next));
+          localStorage.setItem(localKeyRef.current, String(next));
         } catch {
           /* ignore */
         }

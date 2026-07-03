@@ -41,16 +41,16 @@ components/              # Button, Pill, Card, Section, Nav, Footer,
                         # RoomEntry, DuoVideo, Photobooth, RoomClient, …
 lib/
   room-protocol.ts      # shared, transport-agnostic types (server + client)
-  party.ts              # PartyKit host resolution
+  party.ts              # realtime host resolution
+  store.ts              # shared (Blob) / on-device (IndexedDB) data layer
   useRoom.ts            # PartySocket wrapper: presence, state, buffered send
   useDuoVideo.ts        # WebRTC: media, RTCPeerConnection, data channel
   usePhotobooth.ts      # capture coordination + strip building
   strip.ts              # canvas strip compositor
-party/
-  server.ts             # the room party (presence, cap, signaling, countdown)
-  lobby.ts              # singleton: collision-safe codes + ICE config
+worker/                 # the realtime server (Cloudflare Worker / PartyServer)
+  server.ts             # RoomServer + LobbyServer Durable Objects + router
   tsconfig.json
-partykit.json
+wrangler.jsonc          # Worker config (DO bindings, SQLite migrations)
 ```
 
 ## Local development
@@ -60,11 +60,11 @@ Run the two dev servers side by side:
 ```bash
 npm install
 
-# terminal 1 — the realtime server on http://127.0.0.1:1999
-npx partykit dev
+# terminal 1 — the realtime server (Cloudflare Worker) on http://127.0.0.1:8787
+npm run party:dev
 
 # terminal 2 — the Next.js app on http://localhost:3000
-npm run dev
+NEXT_PUBLIC_PARTYKIT_HOST=127.0.0.1:8787 npm run dev
 ```
 
 Then open `http://localhost:3000`, click **Create a room**, and open the same
@@ -97,11 +97,11 @@ Copy `.env.example` and fill in what you need.
   **Our story** (`/timeline`).
 - **Rugs** lives at `public/rugs.mp4` — swap in a new clip to change him.
 
-### PartyKit (server-side vars)
+### Realtime Worker (server-side vars/secrets)
 
-Set these on the PartyKit deployment (`partykit env add NAME`) — **not** in Next,
-so TURN credentials never ship in the client bundle. The client fetches the ICE
-config from the lobby party at runtime.
+Set these on the Worker (`npx wrangler secret put NAME`) — **not** in Next, so
+TURN credentials never ship in the client bundle. The client fetches the ICE
+config from the lobby at runtime.
 
 | Var | Purpose |
 | --- | --- |
@@ -122,28 +122,30 @@ TURN_CREDENTIAL=yyyy
 ## Deployment
 
 This is a standard Next.js app (**no** `output: 'export'`) plus a separately
-deployed PartyKit server.
+deployed realtime server (a Cloudflare Worker running
+[PartyServer](https://github.com/cloudflare/partykit), defined in `worker/`).
 
-### 1. Deploy the PartyKit server
+### 1. Deploy the realtime server (your own Cloudflare account, free)
 
 ```bash
-npx partykit deploy
-# → deploys to https://mygurm.<your-user>.partykit.dev
-npx partykit env add TURN_URL
-npx partykit env add TURN_USERNAME
-npx partykit env add TURN_CREDENTIAL
+npx wrangler deploy
+# first run opens a browser to log in to Cloudflare, then deploys to:
+# → https://mygurm-party.<your-subdomain>.workers.dev
+
+# TURN (optional, for cross-network video) — set as secrets:
+npx wrangler secret put TURN_URL
+npx wrangler secret put TURN_USERNAME
+npx wrangler secret put TURN_CREDENTIAL
 ```
 
-> Prefer pay-per-use on your own Cloudflare account? The same `party/` server
-> code runs on [`partyserver`](https://github.com/threepointone/partyserver)
-> as a Cloudflare Worker + Durable Object — deploy with `wrangler` instead.
+Uses SQLite-backed Durable Objects, so it runs on Cloudflare's free plan.
 
 ### 2. Deploy the Next.js app to Vercel
 
 Import the repo into Vercel (framework auto-detected) and set the env var:
 
 ```
-NEXT_PUBLIC_PARTYKIT_HOST = mygurm.<your-user>.partykit.dev
+NEXT_PUBLIC_PARTYKIT_HOST = mygurm-party.<your-subdomain>.workers.dev
 ```
 
 Deploy. Then click through the golden path in production:

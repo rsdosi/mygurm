@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mygurm-party",
+  "main": "worker/server.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [
+      { "name": "Main", "class_name": "RoomServer" },
+      { "name": "Lobby", "class_name": "LobbyServer" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RoomServer", "LobbyServer"]
+    }
+  ],
+  "vars": {
+    "STUN_URLS": "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302"
+  }
+}

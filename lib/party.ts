@@ -1,7 +1,8 @@
-/** PartyKit host. In dev this is the local `partykit dev` server; in prod it's
- * your deployed `<project>.<user>.partykit.dev` host. Set via env. */
+/** Realtime host (Cloudflare Worker running the PartyServer). In dev this is
+ * `wrangler dev` (127.0.0.1:8787); in prod it's your
+ * `mygurm-party.<subdomain>.workers.dev` host. Set via env. */
 export const PARTYKIT_HOST =
-  process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? "127.0.0.1:1999";
+  process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? "127.0.0.1:8787";
 
 const LOCAL_RE = /^(127\.0\.0\.1|localhost|0\.0\.0\.0)(:\d+)?$/;
 

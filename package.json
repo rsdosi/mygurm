@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "party:dev": "wrangler dev",
-    "party:deploy": "wrangler deploy"
+    "party:dev": "wrangler dev --config wrangler.jsonc",
+    "party:deploy": "wrangler deploy --config wrangler.jsonc"
   },
   "dependencies": {
     "@vercel/blob": "^2.5.0",

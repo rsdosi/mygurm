@@ -128,7 +128,10 @@ deployed realtime server (a Cloudflare Worker running
 ### 1. Deploy the realtime server (your own Cloudflare account, free)
 
 ```bash
-npx wrangler deploy
+# The --config flag is required: it stops Wrangler from auto-detecting the
+# Next.js app and trying to convert the whole site to OpenNext. We only want
+# to deploy the worker in worker/. (Same as `npm run party:deploy`.)
+npx wrangler deploy --config wrangler.jsonc
 # first run opens a browser to log in to Cloudflare, then deploys to:
 # → https://mygurm-party.<your-subdomain>.workers.dev
 

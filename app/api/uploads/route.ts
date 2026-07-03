@@ -13,8 +13,12 @@ export const dynamic = "force-dynamic";
 const PREFIX = "pictures/";
 const VIDEO_RE = /\.(mp4|webm|mov|m4v|ogg|ogv)$/i;
 
+// Blob is usable either via a read-write token or via Vercel's OIDC
+// connection (which injects BLOB_STORE_ID and uses VERCEL_OIDC_TOKEN).
 function configured() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(
+    process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID
+  );
 }
 
 // pathname layout: pictures/<role>/<eventId>/<filename>

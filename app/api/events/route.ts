@@ -12,8 +12,11 @@ export const dynamic = "force-dynamic";
 
 const PATH = "timeline/events.json";
 
+// Usable via a read-write token or Vercel's OIDC Blob connection.
 function configured() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(
+    process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID
+  );
 }
 
 async function readEvents(): Promise<TimelineEvent[]> {

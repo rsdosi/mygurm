@@ -11,8 +11,9 @@
 /.next/
 /out/
 
-# partykit
+# partykit / wrangler
 /.partykit/
+/.wrangler/
 
 # production
 /build

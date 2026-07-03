@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRoom } from "@/lib/useRoom";
 import { useDuoVideo } from "@/lib/useDuoVideo";
 import { usePhotobooth } from "@/lib/usePhotobooth";
+import { partyHostMisconfigured } from "@/lib/party";
 import DuoVideo from "./DuoVideo";
 import Photobooth from "./Photobooth";
 import Button from "./Button";
@@ -59,6 +60,13 @@ export default function RoomClient({ code }: { code: string }) {
       /* ignore */
     }
   };
+
+  // Detect a deployment that still points PartyKit at localhost (client-only,
+  // so it doesn't cause a hydration mismatch).
+  const [misconfig, setMisconfig] = useState(false);
+  useEffect(() => {
+    setMisconfig(partyHostMisconfigured());
+  }, []);
 
   // "Your partner left" banner — fires when we drop from 2 → 1.
   const [partnerLeft, setPartnerLeft] = useState(false);
@@ -117,7 +125,17 @@ export default function RoomClient({ code }: { code: string }) {
         <Presence bothPresent={state.bothPresent} connected={connected} />
       </div>
 
-      {status !== "online" && (
+      {misconfig && (
+        <div className="mt-4 rounded-card bg-you-soft px-4 py-3 text-sm text-you-ink">
+          <strong>Room server isn&apos;t connected.</strong> This site isn&apos;t
+          pointed at a live realtime server, so cameras and the photobooth
+          can&apos;t sync. Deploy PartyKit (<code>npx partykit deploy</code>) and
+          set <code>NEXT_PUBLIC_PARTYKIT_HOST</code> to your{" "}
+          <code>…partykit.dev</code> host, then redeploy.
+        </div>
+      )}
+
+      {!misconfig && status !== "online" && (
         <p className="mt-4 rounded-card bg-me-soft px-4 py-2 text-sm text-me-ink">
           Reconnecting to the room…
         </p>
